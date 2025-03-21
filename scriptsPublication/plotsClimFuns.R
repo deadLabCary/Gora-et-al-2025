@@ -103,17 +103,20 @@ makePlots <- function(r, dt){
     if(grepl("cape", varPlots[i])){
       cols <- c(brewer.pal(9, "Blues")[3:9], "black")
       colHist <- cols[length(cols)/2]
+      binwidth <- 25
     } else if(grepl("vpd", varPlots[i])){
       ## lighter = wetter, darker = drier
       # cols <- rev(c("#663300", "#CC0000", "orange", "#FFCC00", "#FFFF33", "#FFFFCC"))
       cols <- brewer.pal(9, "YlOrRd")
       colHist <- "red"
+      binwidth <- 0.1
     } else if(grepl("mcwd", varPlots[i])){
       ## lighter = wetter, darker = drier
       # cols <- c("black", "#663300", "#7b532b", "#996633", "#CC9933", 
       #               "#CC9900", "#FFCC33", "#fde18d", "#FFFFCC")
       cols <- c("black", rev(brewer.pal(9, "YlOrBr")[c(1, 3, 5, 7:9)]))
       colHist <- "#683904fb"
+      binwidth <- 50
     }
 
     colPal <- colorRampPalette(cols)
@@ -126,22 +129,32 @@ makePlots <- function(r, dt){
     ## total area for each pixel is 28.07809 km x 28.07809 km = 788.379138 km2
     gHist <- ggplot(df, aes(x=value)) + 
       geom_histogram(aes(y=after_stat(count)*0.788379138), position="identity",
-                      color="black", fill=colHist, alpha=0.5)+
+                      color="black", fill=colHist, alpha=0.5, binwidth=binwidth,
+                      closed="left", boundary=0)+
       xlab(titles[i]) +
       ylab("Area (1000s of km)") +
       ggtitle(main[i]) +
-      theme_bw()
-      
+      # ylim(0, 1000) +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.01)),
+                          limits=c(0,1100), 
+                          breaks=seq(0,1000,250),
+                          labels=seq(0, 1000, 250)) +
+      theme_bw() +
+      theme(panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(),
+            panel.background = element_blank())
+    
+    ## mcwd x axis is reversed in `savePlots()`, so we fix the axis there
+    if(!grepl("mcwd", varPlots[i])){
+      gHist <- gHist +
+                scale_x_continuous(expand = expansion(mult = c(0, 0.1)))
+    }
+    
     if(i %in% c(1,6)){
       dft <- as.data.table(df)
       ## quantiles for paper
       if(i==1) dft[value >= 300, .N] / nrow(dft) #total forest area above hours at cape threshold
       if(i==6) dft[value <= -500, .N] / nrow(dft) #total forest area below MCWD threshold
-    }
-    if(i==6){
-      ## quantiles for paper
-      dft <- as.data.table(df)
-      
     }
     
     ## maps
@@ -151,7 +164,10 @@ makePlots <- function(r, dt){
       ylab("") +
       ggtitle(main[i]) +
       theme_bw() +
-      theme(plot.margin = unit(c(0.1,0.2,0,0.1), 'lines')) #top, right, bottom, left
+      theme(plot.margin = unit(c(0.1,0.2,0,0.1), 'lines'),
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(),
+            panel.background = element_blank()) #top, right, bottom, left
     
     if(grepl("mcwd", varPlots[i])){
       g <- g +
@@ -185,7 +201,7 @@ savePlots <- function(figN, plotList, plotListHist, heatmapsVPD, heatmapsMCWD,
     heightF <- 14
     
     if(figType=="supplement"){
-      labels <- c("g", "h", "j", "k", "l")
+      labels <- c("", "g", "h", "", "j", "k", "l")
     } else if(figType=="standalone"){
       labels <- c("A", "B", "C", "D")
     }
@@ -196,13 +212,13 @@ savePlots <- function(figN, plotList, plotListHist, heatmapsVPD, heatmapsMCWD,
                 plotList$mcwdAnnualMean,
                 NULL,
                 nrow=1, widths = c(0.35, 1, 1, 0.35),
-                labels=labels[1:2],
+                labels=labels[1:4],
                 label.x=0.03, label.y=1)
     bottomRow <- ggarrange(
                 plotList$capeHoursWeakM,
                 plotList$capeHoursModM,
                 plotList$capeHoursStrongM,
-                ncol=3, labels=labels[3:5],
+                ncol=3, labels=labels[5:7],
                 label.x=0.03, label.y=1)
     
     pl <- ggarrange(topRow, bottomRow, nrow=2)
@@ -264,7 +280,9 @@ savePlots <- function(figN, plotList, plotListHist, heatmapsVPD, heatmapsMCWD,
     pHistVPD <- plotListHist$vpdDryMean_kPa
     
     pHistMCWD <- plotListHist$mcwdAnnualMean +
-                  scale_x_reverse()
+                  scale_x_reverse(expand = expansion(mult = c(0, 0.05)),
+                                    breaks=seq(-1200, 0, 200),
+                                    labels=seq(-1200, 0, 200))
     
     w <- ggarrange(pHeatVPD, pHeatMCWD, pHeatBoth, 
                     pMapCape, pMapVPD, pMapMCWD,
