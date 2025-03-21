@@ -14,7 +14,7 @@ library(gridExtra)
 library(terra)
 library(RColorBrewer)
 
-source("scripts/publication/parseClimDataFuns.R")
+source("scriptsPublication/plotsClimFuns.R")
 
 dt <- fread("amazon/processedClimVars1990.csv")
 loc <- "amazon"
@@ -27,7 +27,6 @@ loc <- "amazon"
 
 #-------------#
 # Plots Step 1: Create the individual rasters for each variable
-fl <- list.files("amazon/netcdf", full.names=TRUE)
 r <- rast(paste0(loc, "/analysisRastTemplate.tif"))
 
 ## Pixel location in amazon basin
@@ -117,7 +116,7 @@ plotListHist <- lapply(plotListAll, '[[', 2)
 # fig3 = CAPE mean afternoon, 1 panel
 # fig4 = CAPE thresholds + mean afternoon CAPE, 4-panel square
 
-for(fig in 1:4){
+for(fig in 1:2){
   savePlots(figN=fig, plotList, plotListHist, heatmapsVPD, heatmapsMCWD, heatmapsBoth, 
           filePre, figType="standalone")
 }
@@ -125,7 +124,7 @@ for(fig in 1:4){
 #-------------#
 # 6-panel for paper (main figure in manuscript)
 ## figType argument doesn't matter for this
-savePlots(figN=5, plotList, plotListHist, heatmapsVPD, heatmapsMCWD, heatmapsBoth, 
+savePlots(figN=3, plotList, plotListHist, heatmapsVPD, heatmapsMCWD, heatmapsBoth, 
           filePre, figType="standalone")
 
 #-------------#

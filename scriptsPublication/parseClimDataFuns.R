@@ -254,23 +254,6 @@ analyzeVars <- function(allVars, locPath, nCores, yearStart, sites){
   for(targetVar in allVars){
     print(paste0("Analyzing ", targetVar))
     f <- list.files(locPath, pattern=targetVar, full.names=TRUE)
-    if(targetVar=="capeFeng"){
-      ## bring in afternoon hourly values from previous step
-      cl <- makeCluster(nCores)
-      clusterEvalQ(cl, library(data.table))
-      allData <- parLapply(cl, X=f, function(q){
-        load(q)
-        return(capeFeng)
-      })
-
-      stopCluster(cl)
-      allData <- rbindlist(allData)
-
-      ## now calc mean for these values for each site for whole timeframe
-      capeAft <- allData[timeYear >= yearStart, ][, mean(cape), by=site]
-      setnames(capeAft, old="V1", new="capeAftMean")
-      rm(allData)
-    }
     if(targetVar=="capeThresh"){
       allData <- lapply(f, function(q){
         load(q)
@@ -326,7 +309,7 @@ analyzeVars <- function(allVars, locPath, nCores, yearStart, sites){
   
   ## now bring everything together
   out <- meanCapeThreshHours
-  out <- out[meanVPDQuartYr, on="site"][capeAft, on="site"][meanMCWD, on="site"][order(site)]
+  out <- out[meanVPDQuartYr, on="site"][meanMCWD, on="site"][order(site)]
   
   return(out)
 }

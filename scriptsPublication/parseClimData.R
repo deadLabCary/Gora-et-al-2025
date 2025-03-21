@@ -84,9 +84,8 @@ if(getCapeThresh){
 ###     25%      50%      75%      90%      95%      99%    99.5%    99.9% 
 ### 126.375  492.000 1051.375 1671.875 2088.000 2933.500 3261.250 3974.000 
 
-## For analysis, get 4 cape values
+## For analysis, get 3 cape values
 ### the number of hours that cape was above each of the following
-### - mean afternoon cape > 1023 (Feng paper)
 ### - total > 1023 per year y axis, x-axis=mean VPD during those hours
 ### - total > 1900
 ### - total > 3000
@@ -108,6 +107,6 @@ stopCluster(cl)
 
 ##-------------------------------------------------------------##
 ## Step 4: Individual metrics
-allVars <- c("capeFeng", "capeThresh", "vpdBauman", "mcwd")
+allVars <- c("capeThresh", "vpdBauman", "mcwd")
 stormData <- analyzeVars(allVars, locPath, nCores, yearStart, sites)
 fwrite(stormData, paste0(loc, "/processedClimVars", yearStart, "_", yearEnd, ".csv"))
