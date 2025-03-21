@@ -182,12 +182,12 @@ writeRaster(reset_mask, filename = "reset_mask.tif", overwrite=TRUE)
 
 
 #read in directories for monthly raster stackes
-dir1 <- "./amazon_precip/"   
-dir2 <- "./amazon_et/"
+dir1 <- "mcwd/precip_stacks_annual"   
+dir2 <- "mcwd/et_stacks_annual"
 
 # Folder to save results
-output_dir <- "./CWD/"           
-
+output_dir <- "mcwd/CWD"           
+if(!dir.exists(output_dir)) dir.create(output_dir)
 
 #pull files and sort
 sortList <- function(dirN){
@@ -236,7 +236,7 @@ for (i in seq_along(precip_files)) {
 #####
 
 #list CWD files
-deficit_files <- list.files("./CWD/", full.names = TRUE)
+deficit_files <- list.files("mcwd/CWD", full.names = TRUE)
 
 #select 1990-2019
 deficit_files <- deficit_files[grepl(paste0(1990:2019, collapse="|"), deficit_files)]
@@ -250,7 +250,7 @@ deficit_files <- deficit_files[grepl(paste0(1990:2019, collapse="|"), deficit_fi
 dec_prev<-0
 
 #define reset month
-reset_mask<-rast("reset_mask.tif")
+reset_mask<-rast("mcwd/reset_mask.tif")
 
 
 #Function to Calculate CWD
@@ -287,7 +287,7 @@ compute_mcwd <- function(deficit_stack, output_filename) {
 }
 
 #assign directory for annual output
-output_dir <- "CWD/MCWD/"
+output_dir <- "mcwd/CWD/MCWD/"
 if (!dir.exists(output_dir)) dir.create(output_dir)
 
 # Loop through each deficit raster stack to get MCWD
@@ -312,5 +312,5 @@ annual_reset_files<-list.files("CWD/MCWD", full.names = TRUE)
 annual_reset_stack<-rast(annual_reset_files)
 
 #write MCWD raster stack
-writeRaster(annual_reset_stack, filename = "CWD/MCWD/MCWD_precip_reset_1990_2019.tif")
+writeRaster(annual_reset_stack, filename = "mcwd/CWD/MCWD/MCWD_precip_reset_1990_2019.tif")
 
