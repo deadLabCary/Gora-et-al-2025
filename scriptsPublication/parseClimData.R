@@ -10,7 +10,7 @@
 library(terra)
 library(data.table)
 library(parallel)
-source("scripts/publication/parseClimDataFuns.R")
+source("scriptsPublication/parseClimDataFuns.R")
 
 ##-------------------------------------------------------------##
 ## DESCRIPTION OF ANALYSES
