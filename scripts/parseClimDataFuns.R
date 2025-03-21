@@ -1,9 +1,8 @@
 ##########################################################
-## Purpose: Functions to accompany parseCape.R
+## Purpose: Functions to accompany parseClimData.R
 ##
-## Creator: Ian McGregor, March 2024
-## Contact: 
-## System: R Version 4.1.3
+## Creator: Ian McGregor
+## Contact: mcgregori@caryinstitute.org
 ##########################################################
 
 # --------------------------------------------------------------------#
@@ -22,9 +21,6 @@
 ## calcVPDQuart = calculate driest quarter of each year using vpd
 ## analyzeVars = second analysis pass of data, takes output from parseNetcdf
 ##                and aggregates analyses across full timeframe.
-## formatTifs = arrange and format variable rasters for plotting
-## makePlots = create plots of the different climate variables over the basin
-## savePlots = arrange the plots and save them to different pngs
 # --------------------------------------------------------------------#
 identifyFocalCells <- function(fl, polyClip, type){
   r <- rast(fl[1])[[1]]
@@ -39,7 +35,10 @@ identifyFocalCells <- function(fl, polyClip, type){
   r <- mask(r, p)
   
   if(loc=="amazon"){
-    writeRaster(r, paste0(loc, "analysisRastTemplate.tif"))
+    pathTemplate <- paste0(loc, "/analysisRastTemplate.tif")
+    if(!file.exists(pathTemplate)){
+      writeRaster(r, pathTemplate)
+    }
   }
 
   if(type=="analysis") return(cells(r))
@@ -68,14 +67,6 @@ prepData <- function(loc, crd=NULL){
                         fileLab=c("cape", "pressureMeanSea", "pressureSurface",
                                   "tempDew", "tempAir", "windU", "windV", 
                                   "convRainRate"))
-  
-  if(loc=="aus"){
-    fBauman <- list.files("aus", pattern=".csv", full.names=TRUE)
-    sites <- fread(fBauman[1], skip=2) #Bauman_et_al_2022_Nature_1984_2019_climatology_data
-    
-    return(list(climVars=climVars, fBauman=fBauman, sites=sites, spatPoly=NULL))
-  }
-  
   if(loc=="amazon"){
     ## bbox for amazon basin from feng paper
     f <- paste0("amazon/", list.files("amazon/", pattern="Datasets"))
@@ -87,21 +78,10 @@ prepData <- function(loc, crd=NULL){
     bboxNCAR <- sapply(1:4, getBbox, r)
     
     fl <- list.files("southAmerica/netcdf", full.names=TRUE)[1]
-
-    if(is.null(crd)){
-      sites <- identifyFocalCells(fl, polyClip=f1, type="analysis")
-    } else {
-      sites <- identifyFocalCells(fl, polyClip=f1, type="adriane")
-    }
-
-    return(list(climVars=climVars, spatPoly=f1, bboxNCAR=bboxNCAR, sites=sites))
-  }
-
-  if(loc=="southAmerica"){
-    f <- list.files("southAmerica", pattern="metadata", full.names = TRUE)
-    sites <- fread(f)
     
-    return(list(climVars=climVars, sites=sites, spatPoly=NULL))
+    sites <- identifyFocalCells(fl, polyClip=f1, type="analysis")
+    
+    return(list(climVars=climVars, spatPoly=f1, bboxNCAR=bboxNCAR, sites=sites))
   }
 }
 getCapeVals <- function(fVar, nCores, sites, nTimeStart, polyClip){
@@ -133,21 +113,7 @@ extractData <- function(fileNum, fl, sites, loc, rCrop){
     r <- crop(r, rCrop)
     vals <- data.table(values(r))
     vals <- vals[, ID := 1:nrow(vals)][sites, ]
-  } else if(loc %in% c("aus", "southAmerica")){
-
-    if(loc=="aus"){
-      geo <- c("long", "lat")
-    } else {
-      geo <- c("Longitude.Decimal", "Latitude.Decimal")
-    }
-
-    v <- vect(sites, geom=geo, crs="EPSG:4326")
-
-    ## ID is the row number of the original sites table
-    vals <- data.table(extract(r, v))
-
-    if(loc=="southAmerica") vals$ID <- sites$Plot.ID
-  }
+  } 
 
   ## reformat the table
   g <- melt(vals, id.vars="ID")
@@ -345,15 +311,14 @@ analyzeVars <- function(allVars, locPath, nCores, yearStart, sites){
     }
     if(targetVar=="mcwd"){
       ## First, bring in mcwd across all years and get mean
-      ### pattern= "carryover" or "reset"
-      f <- list.files(paste0(loc, "/mcwd"), pattern="carryover", full.names = TRUE)
+      f <- list.files(paste0(loc, "/mcwd"), pattern="precip_reset", full.names = TRUE)
       r <- rast(f)
       rMean <- mean(r, na.rm=TRUE)
       
       ## Then, resample to match the other variables, extract the data, and
       ## add to table
       template <- rast(paste0(loc, "/analysisRastTemplate.tif"))
-      rMeanRes <- resample(rMean, template, "cubic")
+      rMeanRes <- resample(rMean, template, "bilinear")
       valSite <- extract(rMeanRes, sites)
       meanMCWD <- data.table(site=sites, mcwdAnnualMean = valSite[,1])
     }
@@ -364,245 +329,4 @@ analyzeVars <- function(allVars, locPath, nCores, yearStart, sites){
   out <- out[meanVPDQuartYr, on="site"][capeAft, on="site"][meanMCWD, on="site"][order(site)]
   
   return(out)
-}
-formatTifs <- function(var, r, dt){
-  cellsAll <- 1:ncell(r)
-  naCells <- setdiff(1:ncell(r), dt$site)
-
-  cellsAll[dt$site] <- dt[, get(var)]
-  cellsAll[naCells] <- NA
-  values(r) <- cellsAll
-
-  return(r)
-}
-makePlots <- function(r, dt){
-  varPlots <- colnames(dt)
-  varPlots <- varPlots[!grepl("site", varPlots)]
-  varPlots <- varPlots[!grepl("Carry", varPlots)]
-  plotVarList <- lapply(varPlots, formatTifs, r, dt)
-  names(plotVarList) <- varPlots
-  
-  titles <- c(rep("Hours", 3), "VPD (kPa)", "CAPE (J/kg)", "MCWD (mm)")
-  main <- c("Low CAPE threshold", "Moderate CAPE threshold", 
-            "High CAPE threshold", 
-            "Mean VPD in driest quarter", "Mean PM CAPE", "Mean Annual MCWD")
-
-  plotList <- lapply(1:length(plotVarList), function(i){
-    if(grepl("capeHours", varPlots[i])){
-      cols <- rev(brewer.pal(9, "Blues"))
-    } else if(grepl("vpd", varPlots[i])){
-      ## lighter = drier, darker = wetter
-      cols <- c("#663300", "#CC0000", "orange", "#FFCC00", "#FFFF33", "#FFFFCC")
-    } else if(grepl("mcwd", varPlots[i])){
-      ## lighter = drier, darker = wetter
-      cols <- rev(c("#663300", "#993300", "#CC6633", "#CC9900", "#FFCC99"))
-    }
-
-    colPal <- colorRampPalette(cols)
-
-    rf <- plotVarList[[i]]
-    df <- as.data.frame(rf, xy=TRUE)
-    colnames(df)[3] <- "value"
-    g <- ggplot(df, aes(x=x, y=y, fill=value)) + 
-      geom_raster() +
-      xlab("") +
-      ylab("") +
-      scale_fill_gradientn(colours=colPal(10), name=titles[i]) +
-      ggtitle(main[i]) +
-      theme_bw() +
-      theme(plot.margin = unit(c(0.1,0.2,0,0.1), 'lines')) #top, right, bottom, left
-
-    return(g)
-  })
-  
-  names(plotList) <- names(plotVarList)
-  return(plotList)
-}
-savePlots <- function(figN, plotList, heatmapsVPD, filePre, figType){
-  res <- 350
-  units <- "cm"
-  labelX <- -78
-  labelY <- 7
-
-  # VPD + 3 CAPE thresholds, 4-panel square
-  if(figN==1){
-    fileOut <- paste0(filePre, "vpd_mcwd_capeThresh.png")
-    widthF <- 22
-    heightF <- 14
-
-    if(figType=="supplement"){
-      labels <- c("g", "h", "j", "k", "l")
-    } else if(figType=="standalone"){
-      labels <- c("A", "B", "C", "D")
-    }
-    
-    # pl <- ggarrange(plotList$vpdDryMean_kPa,
-    #                 plotList$mcwdAnnualMean,
-    #                 ggplot() + theme_void(),
-    #                 plotList$capeHoursWeakM,
-    #                 plotList$capeHoursModM,
-    #                 plotList$capeHoursStrongM,
-    #                 ncol=3, nrow=2,
-    #                 labels=labels,
-    #                 label.x=0.03, label.y=1)
-    # pl <- grid.arrange(plotList$vpdDryMean_kPa,
-    #                   plotList$mcwdAnnualMean,
-    #                   plotList$capeHoursWeakM,
-    #                   plotList$capeHoursModM,
-    #                   plotList$capeHoursStrongM,
-    #                   layout_matrix=matrix(c(6,1,1,2,2,6,
-    #                                          3,3,4,4,5,5), nrow=2, byrow=TRUE),
-    #                   ncol=3, nrow=2)
-                      
-    pl <- ggarrange(
-      ggarrange(plotList$vpdDryMean_kPa,
-                plotList$mcwdAnnualMean,
-                ncol=2, labels=labels[1:2],
-                label.x=0.03, label.y=1),
-      ggarrange(plotList$capeHoursWeakM,
-                plotList$capeHoursModM,
-                plotList$capeHoursStrongM,
-                ncol=3, labels=labels[3:5],
-                label.x=0.03, label.y=1),
-      nrow=2
-    )
-  }
-
-  # CAPE thresholds, 3-panel vertical
-  if(figN==2){
-    fileOut <- paste0(filePre, "capeThresh.png")
-    widthF <- 11
-    heightF <- 21
-
-    pl <- ggarrange(plotList$capeHoursWeakM,
-                    plotList$capeHoursModM,
-                    plotList$capeHoursStrongM,
-                    ncol=1, nrow=3,
-                    labels=c("A", "B", "C"))
-  }
-
-  # CAPE mean afternoon, 1 panel
-  if(figN == 3){
-    fileOut <- paste0(filePre, "capeAft.png")
-    widthF <- 14
-    heightF <- 10
-  }
-
-  # CAPE thresholds + mean afternoon CAPE, 4-panel square
-  if(figN == 4){
-    fileOut <- paste0(filePre, "capeThresh_capeAft.png")
-    widthF <- 22
-    heightF <- 14
-
-    pl <- ggarrange(plotList$capeHoursWeakM,
-                    plotList$capeHoursModM,
-                    plotList$capeHoursStrongM,
-                    plotList$capeAftMean,
-                    ncol=2, nrow=2, align="hv",
-                    labels=c("A", "B", "C", "D"))
-  }
-
-  if(figN==5){
-    fileOut <- paste0(filePre, "stormsPerspective3Pan.png")
-    widthF <- 50
-    heightF <- 12
-    
-    p1 <- heatmapsVPD$weak +
-            ggtitle("") +
-            xlab("Mean VPD of driest quarter (kPa)") +
-            ylab("Mean hours per year above CAPE threshold") +
-            theme(legend.position="inside", legend.position.inside = c(0.9, 0.8),
-                  plot.margin=margin(0,1.5,0,0, unit="cm"))
-    
-    p2 <- plotList$vpdDryMean_kPa + 
-            xlab("Degrees longitude") + 
-            ylab("Degrees latitude")
-            
-    p3 <- plotList$capeHoursWeakM + 
-            ggtitle("Hours above CAPE threshold") +
-            xlab("Degrees longitude") + 
-            ylab("Degrees latitude")
-    
-    p4 <- plotList$mcwdAnnualMean +
-            xlab("Degrees longitude") + 
-            ylab("Degrees latitude")
-    
-    w <- ggarrange(p1, p2, p3, p4,
-                    ncol=4, nrow=1, labels=c("a", "b", "c", "d"),
-                    label.x=0.03, label.y=1)
-  }
-
-  # add in annotations
-  if(figN == 3){
-    w <- plotList$capeAftMean +
-          xlab("Degrees longitude") +
-          ylab("Degrees latitude")
-  } else if(figN < 5){
-    w <- annotate_figure(pl, 
-            left = textGrob("Degrees Latitude", rot = 90, gp = gpar(cex = 1.2)),
-            bottom = textGrob("Degrees longitude", gp = gpar(cex = 1.2)))
-  }
-
-  if(figType=="supplement"){
-    return(w)
-  } else if(figType=="standalone"){
-    png(fileOut, res=res, units=units, width=widthF, height=heightF)
-    print(w)
-    dev.off()
-  }
-}
-createStack <- function(varName, r, dt, rastFile){
-  rasts <- lapply(varName, function(X){
-    r1 <- r
-    r1[dt$site] <- dt[, get(X)]
-    names(r1) <- X
-    return(r1)
-  })
-
-  w <- rast(rasts)
-  writeRaster(w, rastFile, overwrite=TRUE)
-}
-makePlotsHeatmap <- function(i, dtSub, allVars, figType, idVar, xlabs, ylabs, titles){
-  dtSub <- dtSub[variable == allVars[i]]
-
-  if(i==1) breaks <- seq(0, 150, length.out=6)[2:6]
-  if(i==2) breaks <- seq(0, 100, length.out=6)[2:6]
-  if(i==3) breaks <- seq(0, 160, length.out=6)[2:6]
-  if(i==4) breaks <- seq(0, 150, length.out=6)[2:6]
-
-  ## ERA5 data is 27.8 km res (0.25 degrees)
-  areaPix <- 27.8*27.8
-  breaksArea <- round((breaks*areaPix)/1000)
-
-  if(figType=="standalone"){
-    colors <- c("#663300", "#CC0000", "orange", "#FFCC00",
-                "#FFFF33", "#FFFFCC")
-    colLoess <- "white"
-  } else if(figType=="supplement"){
-    colors <- rev(brewer.pal(9, "Greys"))
-    colLoess <- "#F0F0F0"
-  }
-  
-  p <- ggplot(dtSub) +
-    aes(x=dtSub[,get(idVar)], y=value) + 
-    geom_bin2d(bins=40) +
-    geom_smooth(method = "loess", color=colLoess, linewidth=2) +
-    theme_classic() +
-    scale_x_continuous(expand = c(0,0)) +
-    scale_y_continuous(expand = c(0,0)) +
-    xlab(xlabs[i]) +
-    ylab(ylabs[i]) +
-    ggtitle(titles[i]) +
-    theme(plot.margin = unit(c(0.3,0.2,0,0.3), 'lines'))
-  
-  if(grepl("vpd", idVar)){
-    p <- p +
-          scale_fill_gradientn(colors=colors, breaks=breaks, labels=breaksArea, 
-                        name="1000s of km2")
-  } else {
-    p <- p + 
-          scale_fill_gradientn(colors=colors, name="1000s of km2")
-  }
-
-  return(p)
 }
