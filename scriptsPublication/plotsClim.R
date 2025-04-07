@@ -122,7 +122,7 @@ for(fig in 1:2){
 }
 
 #-------------#
-# 6-panel for paper (main figure in manuscript)
+# 9-panel for paper (main figure in manuscript)
 ## figType argument doesn't matter for this
 savePlots(figN=3, plotList, plotListHist, heatmapsVPD, heatmapsMCWD, heatmapsBoth, 
           filePre, figType="standalone")
