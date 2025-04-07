@@ -47,9 +47,17 @@ makePlotsHeatmap <- function(i, dtSub, allVars, figType, idVar, xlabs, ylabs, ti
     colLoess <- "#333333"
   }
   
-  p <- ggplot(dtSub) +
-    aes(x=dtSub[,get(idVar)], y=value) + 
-    geom_bin2d(bins=40) +
+  if(grepl("vpd", idVar) & grepl("mcwd", allVars[i])){
+    p <- ggplot(dtSub) +
+      aes(y=dtSub[,get(idVar)], x=value) + 
+      geom_bin2d(bins=40)
+  } else {
+    p <- ggplot(dtSub) +
+      aes(x=dtSub[,get(idVar)], y=value) + 
+      geom_bin2d(bins=40)
+  }
+  
+  p <- p +
     geom_smooth(method = "loess", color=colLoess, linewidth=1) +
     theme_classic() +
     scale_x_continuous(expand = c(0,0)) +
@@ -65,16 +73,8 @@ makePlotsHeatmap <- function(i, dtSub, allVars, figType, idVar, xlabs, ylabs, ti
                         name="1000s of km2")
   } else {
     p <- p + 
-        scale_fill_gradientn(colors=colors, name="1000s of km2")
-    if(grepl("mcwd", idVar)){
-      p <- p + 
-            scale_x_reverse()
-    } else if(grepl("vpd", idVar)){
-      ## mcwd vs vpd plot
-      p <- p + 
-            scale_y_reverse() +
-            coord_flip()
-    }
+        scale_fill_gradientn(colors=colors, name="1000s of km2") +
+        scale_x_reverse()
   }
   return(p)
 }
