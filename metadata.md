@@ -4,7 +4,7 @@ Below is a description of the files found in [this google drive folder](https://
 ## Folders
 - amazon
   - climVars
-    - `.Rdata` files for each month-year combination from 1971-2019. This is the output from parsing the netcdf files and isolating our target variables of CAPE (cape thresholds) and VPD.
+    - `.Rdata` files for each month-year combination from 1971-2019. This is an output from `scripts/parseClimData.R`, which parses the netcdf files and isolates the target variables of CAPE (cape thresholds) and VPD.
   - Datasets and codes used
     - This is directly from the supplemental data for [Feng et al 2023](https://www.nature.com/articles/s41467-022-35570-1).
   - figures
@@ -15,9 +15,9 @@ Below is a description of the files found in [this google drive folder](https://
   - `analysisRastTemplate.tif`
     - raster template that we use as the base gridded structure to visualize the data. This is created using the extent of the Feng et al., 2023 Amazon shapefile and the pixel resolution of the ERA5 data.
   - `processedClimVars1990_2019.tif`
-    - aggregated raster with each pixel containing one value for each climate variable, averaged across the timeframe of 1990-2019.
+    - aggregated raster with each pixel containing one value for each climate variable, averaged across the timeframe of 1990-2019. This is an output from `scripts/parseClimData.R`.
   - `processedClimVars1990.csv`
-    - aggregated csv with one value of each climate variable for each pixel in the study area, averaged across the timeframe of 1990-2019.
+    - aggregated csv with one value of each climate variable for each pixel in the study area, averaged across the timeframe of 1990-2019. This is an output from `scripts/parseClimData.R`.
  
 ## Climate Variables
 **NB**: Note that ERA5 data is agnostic of an above- / below-canopy designation. Officially, the relevant variables (temp, wind, surface pressure) are all at "Earth's surface" or Xm above "Earth's surface". 
