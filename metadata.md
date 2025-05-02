@@ -33,6 +33,12 @@ Below is a description of the files found in [this google drive folder](https://
       - View the metadata [here](https://codes.ecmwf.int/grib/param-db/134).
 - Wind
   - We thought we needed wind at first and downloaded the 10m U and V windspeed components, but we ended up not using them. These are described [here (U)](https://codes.ecmwf.int/grib/param-db/165) and [here (V)](https://codes.ecmwf.int/grib/param-db/166).
+- Precipitation (pr)
+  - Monthly data in kg/m2
+  - View documentation [here (U)](https://chelsa-climate.org/wp-admin/download-page/CHELSA_tech_specification_V2.pdf)
+- Evapotranspiration (pet_penman)
+  - Monthly data in kg/m2
+  - View documentation [here (U)](https://chelsa-climate.org/wp-admin/download-page/CHELSA_tech_specification_V2.pdf)
 
 ### Specific methods of calculation
 - CAPE thresholds
@@ -42,3 +48,5 @@ Below is a description of the files found in [this google drive folder](https://
 - VPD mean driest quarter
   - The calculation of VPD was done as described above from Fang et al 2022. To get the mean VPD of the driest quarter, we did the following:
     - for each pixel, we identified the 3 consecutive months that had the highest mean VPD, then assigned that VPD value for the whole year. We do that for every year in the timeframe, then took the mean across years to have a single VPD value per pixel.
+- Maximum Cumulative Water Deficit (MCWD)
+  - Calculated monthly as the difference between precipitation and evapotranspiration with positive net water input being reset to zero for the following month and net negative water input being carried over to the following month as deficit. Deficit was carried forward across years and between months, and reset annually for each focal raster pixel during the month in which that pixel receives the most precipitation.
