@@ -1,3 +1,11 @@
+##########################################################
+## Purpose: Process CHELSA climate data to calculate Maximimum Cumulative Water Deficit
+## Output:
+##      - Raster stack of annual MCWD spanning 1990-2019  
+## Creator: Matthew Chmielewski
+## Contact: mwchmielewski@gmail.com
+##########################################################
+
 library(terra)
 library(sf)
 
