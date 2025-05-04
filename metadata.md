@@ -10,6 +10,7 @@ Below is a description of the files found in [this google drive folder](https://
   - figures
     - figures for the paper
   - mcwd
+    -Evapotranspiration (et_stacks_annual) and precipitation (precip_stacks_annual) rasters stacked annually for calculating Maximum Cumulative Water Deficit. Evapotranspiration (pet_penman) and precipitation (pr) data were downloaded from Chelsa (see below). MCWD was reset annually for each raster cell via reset_mask.tif after reaching the month the focal cell experiences the greatest water deficit. Annual calculated values for MCWD are aggregated across our study period in MCWD_precip_reset_2009_2019.tif. 
   - netcdf
     - Climate variables downloaded from Chelsa and ERA5 via the NCAR repository (for more details on the data sources, please see [this markdown file](https://github.com/deadLabCary/Gora-et-al-2025/blob/main/dataSources.md). Please see below for specifics about each variable.
   - `analysisRastTemplate.tif`
