@@ -60,13 +60,10 @@ getBbox <- function(i, r){
 }
 prepData <- function(loc, crd=NULL){
   climVars = data.table(vars=c("cape", "mean sea level pressure", 
-                               "surface pressure", "2m dewpoint", "2m air temp",
-                               "10m u-wind", "10m v-wind", "convective rain rate"),
-                        varsAbb=c("CAPE", "MSL", "SP", "VAR_2D", "VAR_2T", 
-                                  "VAR_10U", "VAR_10V", "CRR"),
+                               "surface pressure", "2m dewpoint", "2m air temp"),
+                        varsAbb=c("CAPE", "MSL", "SP", "VAR_2D", "VAR_2T"),
                         fileLab=c("cape", "pressureMeanSea", "pressureSurface",
-                                  "tempDew", "tempAir", "windU", "windV", 
-                                  "convRainRate"))
+                                  "tempDew", "tempAir"))
   if(loc=="amazon"){
     ## bbox for amazon basin from feng paper
     f <- paste0("amazon/", list.files("amazon/", pattern="Datasets"))
@@ -146,8 +143,7 @@ findIndividualTimes <- function(X){
   return(k[[length(k)]])
 }
 getTimes <- function(fVar, climVars){
-  ## no wind for now
-  nFilesVar <- sapply(climVars$varsAbb[1:5], function(X){
+  nFilesVar <- sapply(climVars$varsAbb, function(X){
     fVar <- fVar[grepl(X, fVar)]
     return(length(fVar))
   })
@@ -168,7 +164,6 @@ getTimes <- function(fVar, climVars){
 }
 parseNetcdf <- function(nTime, fVar, timeSeries, thresholds, sites, loc, locPath){
   fl <- fVar[grepl(paste0(timeSeries[nTime], collapse="|"), fVar)]
-  fl <- fl[!grepl("10U|10V", fl)]
   varNames <- sapply(fl, function(q) return(strsplit(q, "\\.")[[1]][2]))
   varNames <- as.vector(varNames)
 
@@ -187,15 +182,9 @@ parseNetcdf <- function(nTime, fVar, timeSeries, thresholds, sites, loc, locPath
   hours <- hour(timestamp)
   timeYear <- year(timestampUTC)[1] #each iteration is 1 month's data
   timeMonth <- month(timestampUTC)[1]
-
-  ## cape feng
-  cape <- data.table(site=varData$CAPE$site, cape=varData$CAPE$value)
-  cape[, `:=` (timeHours = rep(hours, each=length(unique(site))),
-                timeMonth = timeMonth, timeYear=timeYear)]
-
-  capeFeng <- cape[timeHours >= 13 & hours <= 19][, timeHours := NULL]
-
+  
   ## cape thresh
+  cape <- data.table(site=varData$CAPE$site, cape=varData$CAPE$value)
   capeThresh <- data.table(site=unique(cape$site), 
                       timeYear=timeYear, timeMonth=timeMonth)
   threshType <- c("Weak", "Moderate", "Strong")
@@ -216,12 +205,11 @@ parseNetcdf <- function(nTime, fVar, timeSeries, thresholds, sites, loc, locPath
               ][, `:=` (timeYear = timeYear, timeMonth=timeMonth)]
   setnames(vpdBauman, old="V1", new="vpdMean")
 
-  for(i in c("capeFeng", "capeThresh", "vpdBauman")){
+  for(i in c("capeThresh", "vpdBauman")){
     outFile <- paste0(locPath, i, "_", timeYear, "_", timeMonth)
     outFile <- paste0(outFile, ".Rdata")
 
     ## slower than fwrite, but much more efficient with memory
-    if(i=="capeFeng") save(capeFeng, file=outFile)
     if(i=="capeThresh") save(capeThresh, file=outFile)
     if(i=="vpdBauman") save(vpdBauman, file=outFile)
   }

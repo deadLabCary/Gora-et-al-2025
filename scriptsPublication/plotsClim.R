@@ -29,13 +29,25 @@ loc <- "amazon"
 # Plots Step 1: Create the individual rasters for each variable
 r <- rast(paste0(loc, "/analysisRastTemplate.tif"))
 
+if(maskForest){
+  ## this forest mask comes from the GLAD dataset, and was obtained from GEE
+  ## https://code.earthengine.google.com/4a408d3f1ed8acf076de13ad1379d67d
+  forest <- rast("forestTropics.tif")
+  forest <- crop(forest, r)
+  forest[forest==0] <- NA
+  forest <- resample(forest, r)
+  
+  r <- mask(r, forest)
+  dt <- dt[site %in% cells(r)]
+}
+
 ## Pixel location in amazon basin
 # values(r)[!is.na(values(r))] <- cells(r)
 # plot(r, col=viridis::viridis(75), main="Site (pixel) number distribution")
 
 # make raster stack of the data
 varName <- colnames(dt)[2:ncol(dt)]
-createStack(varName, r, dt, rastFile="amazon/processedClimVars1990_2019.tif")
+createStack(varName, r, dt, maskForest, rastFile="amazon/processedClimVars1990_2019.tif")
 
 #-------------#
 # Plots Step 2: vpd (or mcwd) vs cape metrics heatmap (single and multiplot)
@@ -57,11 +69,11 @@ heatmaps <- lapply(c("vpd", "mcwd", "both"), function(v){
   
   if(v!="both"){
     ## binned count distribution map
-    allVars <- c("capeHoursWeakM", "capeHoursModM", "capeHoursStrongM", "capeAftMean")
-    ylabs <- c("", "", "", "Mean afternoon CAPE")
-    xlabs <- c("", "", "", xlab)
+    allVars <- c("capeHoursWeakM", "capeHoursModM", "capeHoursStrongM")
+    ylabs <- c("", "", "")
+    xlabs <- c("", "", xlab)
     titles <- c("Low CAPE threshold", "Moderate CAPE threshold", 
-                "High CAPE threshold", "")
+                "High CAPE threshold")
   } else {
     ylabs <- ""
     xlabs <- ""
@@ -75,7 +87,7 @@ heatmaps <- lapply(c("vpd", "mcwd", "both"), function(v){
   if(v=="both"){
     names(plotsHeatmap) <- "vpdmcwd"
   } else {
-    names(plotsHeatmap) <- c("weak", "mod", "strong", "aft")
+    names(plotsHeatmap) <- c("weak", "mod", "strong")
   }
   return(plotsHeatmap)
 })
@@ -111,10 +123,8 @@ plotListHist <- lapply(plotListAll, '[[', 2)
 
 #-------------#
 ## Make multiple figures using `makePlots()` function
-# fig1 = VPD + 3 CAPE thresholds, 4-panel square
-# fig2 = CAPE thresholds, 3-panel vertical
-# fig3 = CAPE mean afternoon, 1 panel
-# fig4 = CAPE thresholds + mean afternoon CAPE, 4-panel square
+# VPD + 3 CAPE thresholds, 4-panel square
+# CAPE thresholds, 3-panel vertical
 
 for(fig in 1:2){
   savePlots(figN=fig, plotList, plotListHist, heatmapsVPD, heatmapsMCWD, heatmapsBoth, 

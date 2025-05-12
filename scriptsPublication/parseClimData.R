@@ -14,10 +14,6 @@ source("scriptsPublication/parseClimDataFuns.R")
 
 ##-------------------------------------------------------------##
 ## DESCRIPTION OF ANALYSES
-## for feng-adjacent analysis
-### - Step 3. get table of all cape values in afternoon over entire timeframe
-### - Step 4. calculate mean of those values
-
 ## for cape above thresholds, we need to
 ### - Step 3. calculate number hours above threshold for each pixel for each year
 ### - Step 4. calculate the mean hours across the full timeframe (each threshold)

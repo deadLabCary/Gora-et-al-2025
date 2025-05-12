@@ -13,15 +13,17 @@
 ## makePlots = create plots of the different climate variables over the basin
 ## savePlots = arrange the plots and save them to different pngs
 # --------------------------------------------------------------------#
-createStack <- function(varName, r, dt, rastFile){
+createStack <- function(varName, r, dt, maskForest, rastFile){
   rasts <- lapply(varName, function(X){
     r1 <- r
     r1[dt$site] <- dt[, get(X)]
     names(r1) <- X
+    
     return(r1)
   })
-
+  
   w <- rast(rasts)
+  
   writeRaster(w, rastFile, overwrite=TRUE)
 }
 makePlotsHeatmap <- function(i, dtSub, allVars, figType, idVar, xlabs, ylabs, titles){
